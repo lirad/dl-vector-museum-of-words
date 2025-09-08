@@ -1,31 +1,4 @@
-// Utility functions for embeddings and vector operations
-
-// ---------- Utility: tiny embedding (char trigrams -> hashed bag-of-ngrams) ----------
-function hashTri(tri: string) {
-  // FNV-1a 32-bit
-  let h = 0x811c9dc5;
-  for (let i = 0; i < tri.length; i++) {
-    h ^= tri.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return h >>> 0;
-}
-
-export function embedWordToy(word: string, dim = 128): Float32Array {
-  const s = `^^${word.toLowerCase()}$$`;
-  const v = new Float32Array(dim);
-  for (let i = 0; i < s.length - 2; i++) {
-    const tri = s.slice(i, i + 3);
-    const idx = hashTri(tri) % dim;
-    v[idx] += 1;
-  }
-  // L2 normalize
-  let norm = 0;
-  for (let i = 0; i < dim; i++) norm += v[i] * v[i];
-  norm = Math.sqrt(norm) || 1;
-  for (let i = 0; i < dim; i++) v[i] /= norm;
-  return v;
-}
+// Utility functions for vector operations
 
 export function dot(a: Float32Array | number[], b: Float32Array | number[]) {
   let s = 0;

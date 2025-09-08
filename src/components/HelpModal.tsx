@@ -31,15 +31,39 @@ export function HelpModal({ onClose, neighbors }: { onClose: () => void; neighbo
             </ul>
           </section>
           <section>
-            <div className="font-semibold mb-1">Toy vs Real engine</div>
-            <ul className="list-disc pl-5 space-y-1">
-              <li><span className="font-semibold">Toy</span>: character‑trigram bag (fast, fully local). Great for intuition.</li>
-              <li><span className="font-semibold">Real</span>: <em>MiniLM‑L6‑v2</em> sentence embeddings running in your browser (dim ≈ 384). Shows true semantic similarity and exposes tokens (BPE) + IDs in Spotlight.</li>
-            </ul>
+            <div className="font-semibold mb-1">MiniLM Embeddings</div>
+            <p>
+              The app uses <em>MiniLM‑L6‑v2</em> sentence embeddings running in your browser (dim ≈ 384). 
+              This provides true semantic similarity and exposes BPE tokens + IDs in the Spotlight view.
+              The model downloads automatically on first use and is cached locally.
+            </p>
           </section>
           <section>
             <div className="font-semibold mb-1">Matrix room</div>
             <p>Shows pairwise cosine similarity as a heatmap (blue → low, red → high). Hover any cell to see the value.</p>
+          </section>
+          <section>
+            <div className="font-semibold mb-1">🧠 Understanding the Relationships</div>
+            <p className="mb-2">
+              <span className="font-semibold">Cosine similarity works because:</span> Words with similar meanings have vectors pointing in similar directions in 384D space.
+              The <strong>angle</strong> between vectors matters more than their length. MiniLM learned these relationships from massive text datasets.
+            </p>
+            <div className="text-sm space-y-1">
+              <div><strong>🎯 Example relationships you might see:</strong></div>
+              <div>• "king" ↔ "queen" = ~0.8 🟢 (very similar, royal concepts)</div>
+              <div>• "happy" ↔ "joyful" = ~0.9 🟢 (nearly identical emotions)</div>
+              <div>• "car" ↔ "bicycle" = ~0.6 🟡 (both transportation, but different)</div>
+              <div>• "love" ↔ "mathematics" = ~0.1 🔴 (unrelated concepts)</div>
+            </div>
+          </section>
+          <section>
+            <div className="font-semibold mb-1">🎨 Color Coding</div>
+            <div className="text-sm space-y-1">
+              <div>🟢 <strong>Green:</strong> Very similar (&gt;0.7) - Strong semantic relationship</div>
+              <div>🟡 <strong>Yellow:</strong> Moderately similar (0.4-0.7) - Some connection</div>
+              <div>🟠 <strong>Orange:</strong> Weakly similar (0.1-0.4) - Distant relationship</div>
+              <div>🔴 <strong>Red:</strong> Unrelated (&lt;0.1) - No meaningful connection</div>
+            </div>
           </section>
         </div>
       </div>
