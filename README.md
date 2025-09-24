@@ -37,6 +37,20 @@ DL Vector Museum of Words is an interactive web application that makes the invis
 
 🧠 **Educational Content** - Built-in explanations help you understand what you're seeing
 
+## 📸 Screenshots
+
+### Main Interface
+![Main Interface](screenshots/main-interface.png)
+*The main dashboard showing the interactive vector visualization interface with word clustering and navigation controls*
+
+### Tokenization in Action  
+![Tokenizer View](screenshots/tokenizer-view.png)
+*Real-time GPT-4 tokenization - watch as your text gets broken down into subword tokens exactly as language models see it*
+
+### 3D Vector Space Exploration
+![3D Visualization](screenshots/3d-visualization.png)
+*Immersive 3D exploration of semantic relationships - navigate through vector space and discover how words cluster by meaning*
+
 ## ✨ Features
 
 ### 🎨 **Interactive Visualizations**
