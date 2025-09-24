@@ -209,6 +209,54 @@ export function Visualization3D({
     };
   };
 
+  // Touch interaction for mobile devices
+  const addTouchInteraction = (domElement: HTMLElement, camera: THREE.PerspectiveCamera, scene: THREE.Scene) => {
+    let lastTouchTime = 0;
+    
+    const onTouchStart = (event: TouchEvent) => {
+      // Prevent default to avoid scrolling
+      if (event.touches.length === 1) {
+        event.preventDefault();
+      }
+    };
+    
+    const onTouchEnd = (event: TouchEvent) => {
+      const now = Date.now();
+      const timeDiff = now - lastTouchTime;
+      
+      // Detect tap (not swipe)
+      if (timeDiff < 300 && event.changedTouches.length === 1) {
+        const touch = event.changedTouches[0];
+        const rect = domElement.getBoundingClientRect();
+        
+        mouse.current!.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.current!.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+        
+        raycaster.current!.setFromCamera(mouse.current!, camera);
+        
+        const pointsGroup = pointsRef.current;
+        if (pointsGroup) {
+          const intersects = raycaster.current!.intersectObjects(pointsGroup.children);
+          
+          if (intersects.length > 0) {
+            const touchedIndex = intersects[0].object.userData.index;
+            onSelect(touchedIndex);
+          }
+        }
+      }
+      
+      lastTouchTime = now;
+    };
+    
+    domElement.addEventListener('touchstart', onTouchStart, { passive: false });
+    domElement.addEventListener('touchend', onTouchEnd);
+    
+    return () => {
+      domElement.removeEventListener('touchstart', onTouchStart);
+      domElement.removeEventListener('touchend', onTouchEnd);
+    };
+  };
+
   const addOrbitControls = (camera: THREE.PerspectiveCamera, domElement: HTMLElement) => {
     let isMouseDown = false;
     let mouseX = 0;
@@ -510,16 +558,30 @@ export function Visualization3D({
       scene.background = new THREE.Color(dark ? 0x0a0a0b : 0xffffff);
       sceneRef.current = scene;
 
-      // Camera
-      const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-      camera.position.set(10, 10, 10);
+      // Camera with mobile optimizations
+      const isMobile = width < 768;
+      const camera = new THREE.PerspectiveCamera(
+        isMobile ? 85 : 75, // Wider FOV on mobile for better view
+        width / height, 
+        0.1, 
+        1000
+      );
+      camera.position.set(
+        isMobile ? 8 : 10, 
+        isMobile ? 8 : 10, 
+        isMobile ? 8 : 10
+      );
       camera.lookAt(0, 0, 0);
       cameraRef.current = camera;
 
-      // Renderer
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      // Renderer with mobile performance optimizations
+      const renderer = new THREE.WebGLRenderer({ 
+        antialias: !isMobile, // Disable antialiasing on mobile for better performance
+        alpha: true,
+        powerPreference: isMobile ? "default" : "high-performance"
+      });
       renderer.setSize(width, height);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
       rendererRef.current = renderer;
       
       // Clear container and add renderer
@@ -558,8 +620,11 @@ export function Visualization3D({
       // Add mouse interaction for point selection
       const interactionCleanup = addMouseInteraction(renderer.domElement, camera, scene);
       
+      // Add touch interaction for mobile devices
+      const touchCleanup = isMobile ? addTouchInteraction(renderer.domElement, camera, scene) : null;
+      
       // Store cleanup functions
-      cleanupFunctionsRef.current = [orbitCleanup, interactionCleanup];
+      cleanupFunctionsRef.current = [orbitCleanup, interactionCleanup, ...(touchCleanup ? [touchCleanup] : [])];
 
       console.log('Adding lighting...');
       // Enhanced lighting for better material appearance
@@ -745,70 +810,76 @@ export function Visualization3D({
   }
 
   return (
-    <div className="relative h-[600px]">
+    <div className="relative h-[350px] sm:h-[450px] lg:h-[600px]">
       {/* Always render container so ref is available */}
-      <div ref={containerRef} className="w-full h-full" />
+      <div ref={containerRef} className="w-full h-full touch-manipulation" />
       
       {/* Loading overlay */}
       {vectors.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-lg">
-          <div className="text-center text-white">
-            <div className="mb-2">⏳ Waiting for Embeddings...</div>
-            <div className="text-sm opacity-70">The 3D visualization will appear once the tokenizer processes the words</div>
+          <div className="text-center text-white p-4">
+            <div className="mb-2 text-sm sm:text-base">⏳ Waiting for Embeddings...</div>
+            <div className="text-xs sm:text-sm opacity-70">The 3D visualization will appear once the tokenizer processes the words</div>
           </div>
         </div>
       )}
       
       {vectors.length > 0 && isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-lg">
-          <div className="text-center text-white">
-            <div className="mb-2">🔮 Loading 3D Space...</div>
-            <div className="text-sm opacity-70">Projecting {vectors.length} vectors into 3D</div>
+          <div className="text-center text-white p-4">
+            <div className="mb-2 text-sm sm:text-base">🔮 Loading 3D Space...</div>
+            <div className="text-xs sm:text-sm opacity-70">Projecting {vectors.length} vectors into 3D</div>
           </div>
         </div>
       )}
       
-      {/* Controls info - only show when loaded */}
+      {/* Controls info - responsive */}
       {!isLoading && vectors.length > 0 && (
-        <div className="absolute top-4 left-4 bg-black/50 rounded-lg p-2 text-xs">
-          <div className="text-white">🖱️ Drag to rotate • 🖱️ Click points • 🖲️ Scroll to zoom</div>
-          <div className="text-white/70">🔴 Selected • 🟡 Hover • 🔵 Others</div>
+        <div className="absolute top-2 sm:top-4 left-2 sm:left-4 bg-black/60 rounded-lg p-2 text-xs max-w-[250px] sm:max-w-none">
+          <div className="text-white">
+            <span className="hidden sm:inline">🖱️ Drag to rotate • 🖱️ Click points • 🖲️ Scroll to zoom</span>
+            <span className="sm:hidden">👆 Drag to rotate • Tap points</span>
+          </div>
+          <div className="text-white/70 text-[10px] sm:text-xs">
+            <span className="hidden sm:inline">🔴 Selected • 🟡 Hover • 🔵 Others</span>
+            <span className="sm:hidden">🔴 Selected • 🔵 Others</span>
+          </div>
         </div>
       )}
       
-      {/* PCA Analysis info - only show when loaded */}
+      {/* PCA Analysis info - responsive */}
       {!isLoading && pcaAnalysis && (
-        <div className="absolute top-4 right-4 bg-black/50 rounded-lg p-3 text-xs max-w-xs">
-          <div className="text-white font-semibold mb-2">📊 3D PCA Analysis</div>
-          <div className="space-y-1 text-white/90">
+        <div className="absolute top-2 sm:top-4 right-2 sm:right-4 bg-black/60 rounded-lg p-2 sm:p-3 text-xs max-w-[200px] sm:max-w-xs">
+          <div className="text-white font-semibold mb-2">📊 3D PCA</div>
+          <div className="space-y-1 text-white/90 text-[10px] sm:text-xs">
             <div className="flex justify-between">
-              <span className="text-red-400">PC1 (X-axis):</span>
+              <span className="text-red-400">PC1:</span>
               <span>{(pcaAnalysis.varianceExplained[0] * 100).toFixed(1)}%</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-green-400">PC2 (Y-axis):</span>
+              <span className="text-green-400">PC2:</span>
               <span>{(pcaAnalysis.varianceExplained[1] * 100).toFixed(1)}%</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-blue-400">PC3 (Z-axis):</span>
+              <span className="text-blue-400">PC3:</span>
               <span>{(pcaAnalysis.varianceExplained[2] * 100).toFixed(1)}%</span>
             </div>
             <div className="border-t border-white/20 pt-1 mt-2">
               <div className="flex justify-between font-semibold">
-                <span>Total captured:</span>
+                <span>Total:</span>
                 <span>{(pcaAnalysis.totalVariance * 100).toFixed(1)}%</span>
               </div>
             </div>
           </div>
-          <div className="text-white/60 mt-2 text-[10px] leading-relaxed">
-            Closer points = more similar meanings. Each axis represents a principal component capturing the most variance in the 384D semantic space.
+          <div className="text-white/60 mt-2 text-[9px] sm:text-[10px] leading-relaxed hidden sm:block">
+            Closer points = more similar meanings. Each axis captures variance in 384D semantic space.
           </div>
         </div>
       )}
       
-      {/* Hover tooltip */}
+      {/* Hover tooltip - responsive */}
       {!isLoading && hoveredIndex !== null && (
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-yellow-500/90 text-black px-3 py-1 rounded-lg text-sm font-semibold">
+        <div className="absolute bottom-2 sm:bottom-4 left-1/2 transform -translate-x-1/2 bg-yellow-500/90 text-black px-2 sm:px-3 py-1 rounded-lg text-xs sm:text-sm font-semibold max-w-[250px] truncate">
           {words[hoveredIndex]}
         </div>
       )}

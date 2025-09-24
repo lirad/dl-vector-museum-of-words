@@ -349,35 +349,47 @@ export default function MuseumOfWords() {
   const center = { x: width / 2, y: height / 2 };
 
   return (
-    <div className={`min-h-screen ${dark ? "text-zinc-100 bg-zinc-950" : "text-zinc-900 bg-zinc-100"} p-3 sm:p-6 font-sans overflow-x-hidden`}>
+    <div className={`min-h-screen ${dark ? "text-zinc-100 bg-zinc-950" : "text-zinc-900 bg-zinc-100"} p-2 sm:p-4 lg:p-6 font-sans overflow-x-hidden`}>
       <WallBackground dark={dark} />
-      <div className="max-w-6xl mx-auto">
-        <header className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-3">
-            <div className="rounded-2xl px-3 py-1.5 bg-gradient-to-r from-pink-500/80 to-violet-500/80 text-white text-sm shadow">Museum of Words</div>
-            <div className="hidden sm:flex items-center gap-2 text-sm opacity-80">
+      <div className="max-w-7xl mx-auto">
+        <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 sm:mb-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <div className="rounded-2xl px-3 py-1.5 bg-gradient-to-r from-pink-500/80 to-violet-500/80 text-white text-sm shadow whitespace-nowrap">
+              <span className="hidden sm:inline">DL Vector Museum of Words</span>
+              <span className="sm:hidden">Vector Museum</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs sm:text-sm opacity-80">
               <span>Add words & phrases → see clusters.</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button className="rounded-xl border px-3 py-2 text-sm backdrop-blur bg-white/5 border-white/10 hover:bg-white/10 transition" onClick={() => setDark(d => !d)} title={dark ? "Switch to Light" : "Switch to Dark"}>
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button className="rounded-xl border px-3 py-2 text-sm backdrop-blur bg-white/5 border-white/10 hover:bg-white/10 transition touch-manipulation" onClick={() => setDark(d => !d)} title={dark ? "Switch to Light" : "Switch to Dark"}>
               {dark ? <Sun size={16} /> : <MoonStar size={16} />}
             </button>
-            <button className="rounded-xl border px-3 py-2 text-sm backdrop-blur bg-white/5 border-white/10 hover:bg-white/10 transition flex items-center gap-2" onClick={() => setHelpOpen(true)}>
-              <HelpCircle size={16} /> Help
+            <button className="rounded-xl border px-3 py-2 text-sm backdrop-blur bg-white/5 border-white/10 hover:bg-white/10 transition flex items-center gap-2 touch-manipulation" onClick={() => setHelpOpen(true)}>
+              <HelpCircle size={16} /> <span className="hidden sm:inline">Help</span>
             </button>
           </div>
         </header>
 
         {/* Controls */}
-        <div className="grid md:grid-cols-3 gap-4 mb-4">
-          <div className="md:col-span-2 rounded-2xl p-4 border border-white/10 bg-white/5 backdrop-blur">
-            <div className="flex flex-wrap gap-2 items-center">
-              <input value={newWord} onChange={e => setNewWord(e.target.value)} onKeyDown={e => e.key === "Enter" && addWord()} placeholder="Type a word or phrase" className="min-w-0 w-full sm:min-w-[260px] sm:w-auto flex-1 rounded-xl px-3 py-2 bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-violet-400/50" />
-              <button onClick={addWord} disabled={loadingModel} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 bg-violet-500/90 hover:bg-violet-500 disabled:bg-gray-500/50 disabled:cursor-not-allowed text-white shadow">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-4">
+          <div className="lg:col-span-2 rounded-2xl p-3 sm:p-4 border border-white/10 bg-white/5 backdrop-blur">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 items-stretch sm:items-center">
+              <input 
+                value={newWord} 
+                onChange={e => setNewWord(e.target.value)} 
+                onKeyDown={e => e.key === "Enter" && addWord()} 
+                placeholder="Type a word or phrase" 
+                className="min-w-0 w-full flex-1 rounded-xl px-3 py-3 sm:py-2 text-base sm:text-sm bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-violet-400/50 touch-manipulation" 
+              />
+              <button 
+                onClick={addWord} 
+                disabled={loadingModel} 
+                className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 sm:py-2 bg-violet-500/90 hover:bg-violet-500 disabled:bg-gray-500/50 disabled:cursor-not-allowed text-white shadow font-medium touch-manipulation whitespace-nowrap"
+              >
                 <PlusCircle size={16} /> {loadingModel ? "Loading..." : "Hang it"}
               </button>
-
             </div>
 
             {/* Tokenizer loading indicator */}
@@ -529,52 +541,89 @@ export default function MuseumOfWords() {
               )}
             </div>
 
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-              <div className="sm:col-span-2 flex items-center gap-2 min-w-0">
-                <span className="opacity-70 whitespace-nowrap">Projection</span>
-                <div className="flex gap-1 rounded-xl overflow-hidden border border-white/10 flex-shrink-0">
-                  <button onClick={() => setMethod("umap")} className={`px-2 sm:px-3 py-1 text-xs sm:text-sm ${method === "umap" ? "bg-white/20" : "bg-transparent"}`} title="UMAP: Non-linear, preserves clusters and neighborhoods. Great for discovering semantic groups."><Map className="inline mr-1" size={12}/>UMAP</button>
-                  <button onClick={() => setMethod("pca")} className={`px-2 sm:px-3 py-1 text-xs sm:text-sm ${method === "pca" ? "bg-white/20" : "bg-transparent"}`} title="PCA: Linear, shows main variance directions. Good for understanding dominant patterns."><Grid3X3 className="inline mr-1" size={12}/>PCA</button>
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <span className="opacity-70 text-xs sm:text-sm font-medium">Projection Method</span>
+                <div className="flex gap-1 rounded-xl overflow-hidden border border-white/10">
+                  <button onClick={() => setMethod("umap")} className={`px-3 py-2 text-xs sm:text-sm font-medium touch-manipulation ${method === "umap" ? "bg-white/20 text-white" : "bg-transparent opacity-70"}`} title="UMAP: Non-linear, preserves clusters and neighborhoods. Great for discovering semantic groups.">
+                    <Map className="inline mr-1" size={14}/>UMAP
+                  </button>
+                  <button onClick={() => setMethod("pca")} className={`px-3 py-2 text-xs sm:text-sm font-medium touch-manipulation ${method === "pca" ? "bg-white/20 text-white" : "bg-transparent opacity-70"}`} title="PCA: Linear, shows main variance directions. Good for understanding dominant patterns.">
+                    <Grid3X3 className="inline mr-1" size={14}/>PCA
+                  </button>
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 min-w-0" title="How many neighbor links per node to draw.">
-                <span className="opacity-70 whitespace-nowrap">Links / node</span>
-                <input type="range" min={1} max={5} value={neighbors} onChange={e => setNeighbors(parseInt(e.target.value))} className="flex-1 min-w-0" />
-                <span className="w-6 text-right flex-shrink-0">{neighbors}</span>
+              <label className="flex flex-col sm:flex-row sm:items-center gap-2" title="How many neighbor links per node to draw.">
+                <span className="opacity-70 text-xs sm:text-sm font-medium whitespace-nowrap">Neighbor Links</span>
+                <div className="flex items-center gap-3 flex-1">
+                  <input type="range" min={1} max={5} value={neighbors} onChange={e => setNeighbors(parseInt(e.target.value))} className="flex-1 min-w-0 touch-manipulation" />
+                  <span className="w-8 text-right text-sm font-medium flex-shrink-0 bg-white/10 rounded px-2 py-1">{neighbors}</span>
+                </div>
               </label>
-
             </div>
 
             {/* Advanced controls */}
-            <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 text-sm">
-              <button onClick={() => setSimple(s => !s)} className="rounded-xl px-3 py-1.5 border border-white/10 bg-white/10 hover:bg-white/20 whitespace-nowrap">
-                {simple ? "Show advanced" : "Hide advanced"}
-              </button>
+            <div className="mt-4 space-y-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <button onClick={() => setSimple(s => !s)} className="rounded-xl px-4 py-2 border border-white/10 bg-white/10 hover:bg-white/20 text-sm font-medium touch-manipulation">
+                  {simple ? "Show Advanced Settings" : "Hide Advanced Settings"}
+                </button>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Search size={16} className="flex-shrink-0 opacity-70" />
+                  <input 
+                    value={query} 
+                    onChange={e => setQuery(e.target.value)} 
+                    placeholder="Find/select word…" 
+                    className="rounded-xl px-3 py-2 bg-white/10 border border-white/10 min-w-0 flex-1 sm:w-48 text-sm touch-manipulation" 
+                  />
+                </div>
+              </div>
+              
               {!simple && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full sm:flex-1">
-                  <label className="flex items-center gap-2 min-w-0" title="UMAP: number of nearby points considered when laying out.">
-                    <span className="opacity-70 whitespace-nowrap text-xs">UMAP nNeighbors</span>
-                    <input type="range" min={4} max={30} value={umapNNeighbors} onChange={e => setUmapNNeighbors(parseInt(e.target.value))} className="flex-1 min-w-0" />
-                    <span className="w-8 text-right text-xs flex-shrink-0">{umapNNeighbors}</span>
-                  </label>
-                  <label className="flex items-center gap-2 min-w-0" title="UMAP: how tightly points pack into clusters (lower = tighter).">
-                    <span className="opacity-70 whitespace-nowrap text-xs">UMAP minDist</span>
-                    <input type="range" min={0.05} max={0.8} step={0.05} value={umapMinDist} onChange={e => setUmapMinDist(parseFloat(e.target.value))} className="flex-1 min-w-0" />
-                    <span className="w-10 text-right text-xs flex-shrink-0">{umapMinDist.toFixed(2)}</span>
-                  </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+                  <div className="space-y-2">
+                    <label className="flex flex-col gap-2" title="UMAP: number of nearby points considered when laying out.">
+                      <span className="opacity-70 text-xs font-medium">UMAP Neighbors</span>
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="range" 
+                          min={4} 
+                          max={30} 
+                          value={umapNNeighbors} 
+                          onChange={e => setUmapNNeighbors(parseInt(e.target.value))} 
+                          className="flex-1 min-w-0 touch-manipulation" 
+                        />
+                        <span className="w-10 text-right text-xs font-medium bg-white/10 rounded px-2 py-1">{umapNNeighbors}</span>
+                      </div>
+                    </label>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="flex flex-col gap-2" title="UMAP: how tightly points pack into clusters (lower = tighter).">
+                      <span className="opacity-70 text-xs font-medium">UMAP Min Distance</span>
+                      <div className="flex items-center gap-3">
+                        <input 
+                          type="range" 
+                          min={0.05} 
+                          max={0.8} 
+                          step={0.05} 
+                          value={umapMinDist} 
+                          onChange={e => setUmapMinDist(parseFloat(e.target.value))} 
+                          className="flex-1 min-w-0 touch-manipulation" 
+                        />
+                        <span className="w-12 text-right text-xs font-medium bg-white/10 rounded px-2 py-1">{umapMinDist.toFixed(2)}</span>
+                      </div>
+                    </label>
+                  </div>
                 </div>
               )}
-              <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
-                <Search size={14} className="flex-shrink-0" />
-                <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Find/select word…" className="rounded-xl px-3 py-1.5 bg-white/10 border border-white/10 min-w-0 flex-1 sm:w-auto" />
-              </div>
             </div>
           </div>
 
           {/* Details / Stats */}
-          <div className="rounded-2xl p-4 border border-white/10 bg-white/5 backdrop-blur">
-            <div className="text-sm opacity-80 mb-2">Spotlight</div>
+          <div className="rounded-2xl p-3 sm:p-4 border border-white/10 bg-white/5 backdrop-blur">
+            <div className="text-sm font-medium opacity-80 mb-3">Spotlight</div>
             {selected != null ? (
               <div className="text-sm">
                 <div className="mb-2"><span className="opacity-70">Phrase</span>: <span className="font-semibold">{words[selected]}</span></div>
@@ -656,31 +705,65 @@ export default function MuseumOfWords() {
             ) : (
               <div className="text-sm opacity-70">Click a placard to see its neighbors and tokens.</div>
             )}
-            <div className="mt-4 text-sm opacity-80">Exhibit Stats</div>
-            <div className="grid grid-cols-2 gap-2 text-sm mt-1">
-              <div className="rounded-xl p-3 bg-white/5 border border-white/10"><div className="opacity-70">Pieces</div><div className="text-xl font-semibold">{words.length}</div></div>
-              <div className="rounded-xl p-3 bg-white/5 border border-white/10"><div className="opacity-70">Projection</div><div className="text-xl font-semibold uppercase">{method}</div></div>
-              <div className="rounded-xl p-3 bg-white/5 border border-white/10"><div className="opacity-70">Links / node</div><div className="text-xl font-semibold">{neighbors}</div></div>
-              <div className="rounded-xl p-3 bg-white/5 border border-white/10"><div className="opacity-70">Engine</div><div className="text-xl font-semibold">GPT-4</div></div>
+            <div className="mt-4 text-sm font-medium opacity-80">Exhibit Stats</div>
+            <div className="grid grid-cols-2 gap-2 text-sm mt-2">
+              <div className="rounded-xl p-2 sm:p-3 bg-white/5 border border-white/10">
+                <div className="opacity-70 text-xs">Pieces</div>
+                <div className="text-lg sm:text-xl font-semibold">{words.length}</div>
+              </div>
+              <div className="rounded-xl p-2 sm:p-3 bg-white/5 border border-white/10">
+                <div className="opacity-70 text-xs">Method</div>
+                <div className="text-lg sm:text-xl font-semibold uppercase">{method}</div>
+              </div>
+              <div className="rounded-xl p-2 sm:p-3 bg-white/5 border border-white/10">
+                <div className="opacity-70 text-xs">Links</div>
+                <div className="text-lg sm:text-xl font-semibold">{neighbors}</div>
+              </div>
+              <div className="rounded-xl p-2 sm:p-3 bg-white/5 border border-white/10">
+                <div className="opacity-70 text-xs">Engine</div>
+                <div className="text-sm sm:text-lg font-semibold">GPT-4</div>
+              </div>
             </div>
-            <div className="mt-2 text-xs opacity-70">{testNote}</div>
+            <div className="mt-3 text-xs opacity-70 p-2 rounded bg-white/5">{testNote}</div>
           </div>
         </div>
 
         {/* Tabs */}
         <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur overflow-hidden">
-          <div className="flex items-center gap-2 p-2 border-b border-white/10">
-            <button className={`px-4 py-2 rounded-xl ${tab === "gallery" ? "bg-white/10" : "bg-transparent"}`} onClick={() => setTab("gallery")}>Gallery wall</button>
-            <button className={`px-4 py-2 rounded-xl ${tab === "matrix" ? "bg-white/10" : "bg-transparent"}`} onClick={() => setTab("matrix")}>Matrix room</button>
-            <button className={`px-4 py-2 rounded-xl ${tab === "3d" ? "bg-white/10" : "bg-transparent"}`} onClick={() => setTab("3d")}>3D Space</button>
-            <button className={`px-4 py-2 rounded-xl ${tab === "tokenizer" ? "bg-white/10" : "bg-transparent"}`} onClick={() => setTab("tokenizer")}>Tokenizer</button>
+          <div className="flex items-center gap-1 p-2 border-b border-white/10 overflow-x-auto scrollbar-hide">
+            <button 
+              className={`px-3 sm:px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap touch-manipulation transition-colors ${tab === "gallery" ? "bg-white/20 text-white" : "bg-transparent opacity-70 hover:opacity-100"}`} 
+              onClick={() => setTab("gallery")}
+            >
+              <span className="hidden sm:inline">Gallery Wall</span>
+              <span className="sm:hidden">Gallery</span>
+            </button>
+            <button 
+              className={`px-3 sm:px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap touch-manipulation transition-colors ${tab === "matrix" ? "bg-white/20 text-white" : "bg-transparent opacity-70 hover:opacity-100"}`} 
+              onClick={() => setTab("matrix")}
+            >
+              <span className="hidden sm:inline">Matrix Room</span>
+              <span className="sm:hidden">Matrix</span>
+            </button>
+            <button 
+              className={`px-3 sm:px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap touch-manipulation transition-colors ${tab === "3d" ? "bg-white/20 text-white" : "bg-transparent opacity-70 hover:opacity-100"}`} 
+              onClick={() => setTab("3d")}
+            >
+              3D Space
+            </button>
+            <button 
+              className={`px-3 sm:px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap touch-manipulation transition-colors ${tab === "tokenizer" ? "bg-white/20 text-white" : "bg-transparent opacity-70 hover:opacity-100"}`} 
+              onClick={() => setTab("tokenizer")}
+            >
+              Tokenizer
+            </button>
           </div>
 
           {tab === "gallery" && (
             <div className="relative">
-              <div className="absolute inset-6 rounded-[28px] pointer-events-none shadow-[inset_0_0_0_2px_rgba(255,255,255,0.04),_0_40px_80px_-40px_rgba(0,0,0,0.5)]" />
+              <div className="absolute inset-3 sm:inset-6 rounded-[20px] sm:rounded-[28px] pointer-events-none shadow-[inset_0_0_0_2px_rgba(255,255,255,0.04),_0_40px_80px_-40px_rgba(0,0,0,0.5)]" />
 
-              <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[400px] sm:h-[560px] block" style={{clipPath: 'inset(0)'}}>
+              <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[350px] sm:h-[450px] lg:h-[560px] block touch-manipulation" style={{clipPath: 'inset(0)'}}>
                 <defs>
                   <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
                     <path d="M 40 0 L 0 0 0 40" fill="none" stroke={dark ? "#ffffff10" : "#00000010"} strokeWidth="1" />
@@ -787,14 +870,14 @@ export default function MuseumOfWords() {
           )}
 
           {tab === "matrix" && (
-            <div className="p-4 overflow-x-auto">
+            <div className="p-3 sm:p-4 overflow-x-auto">
               <div className="mb-3 text-sm opacity-80">Cosine similarity heatmap — hover a cell for values.</div>
               <Heatmap words={words} vectors={vectors} dark={dark} />
             </div>
           )}
 
           {tab === "3d" && (
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <div className="mb-3 text-sm opacity-80">
                 🌌 Explore semantic relationships in 3D space. Words with similar meanings cluster together.
               </div>
@@ -811,7 +894,7 @@ export default function MuseumOfWords() {
           )}
 
           {tab === "tokenizer" && (
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               <div className="mb-3 text-sm opacity-80">
                 🔤 See how text is broken down into tokens that get converted to embeddings. Try typing different phrases!
               </div>
@@ -847,22 +930,22 @@ export default function MuseumOfWords() {
           )}
         </div>
 
-        <footer className="mt-6 text-xs opacity-70 leading-relaxed space-y-3">
-          <div>
+        <footer className="mt-6 text-xs opacity-70 leading-relaxed space-y-4">
+          <div className="p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
             <span className="font-semibold">How it works:</span> words/phrases → <span className="font-semibold">GPT-4 tokenizer</span> (BPE) → <span className="font-semibold">token-based embeddings</span> → cosine similarity → 2D layout via <span className="font-semibold">{method.toUpperCase()}</span>. Links show each point's top‑{neighbors} neighbors by cosine.
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-white/10">
-            <div>
-              <div className="font-semibold mb-1">📚 Why These Techniques Matter</div>
-              <div className="space-y-1">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2 border-t border-white/10">
+            <div className="p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
+              <div className="font-semibold mb-2">📚 Why These Techniques Matter</div>
+              <div className="space-y-2 text-xs">
                 <div><strong>UMAP:</strong> Reveals semantic clusters & preserves local meaning relationships</div>
                 <div><strong>PCA:</strong> Shows dominant patterns & provides interpretable variance axes</div>
                 <div><strong>Alternative methods</strong> like t-SNE, MDS, or Random Projection each reveal different aspects of meaning space</div>
               </div>
             </div>
-            <div>
-              <div className="font-semibold mb-1">🎯 Educational Value</div>
-              <div className="space-y-1">
+            <div className="p-3 sm:p-4 rounded-xl bg-white/5 border border-white/10">
+              <div className="font-semibold mb-2">🎯 Educational Value</div>
+              <div className="space-y-2 text-xs">
                 <div>• Compare how words cluster differently with each method</div>
                 <div>• Understand trade-offs between speed vs. accuracy</div>
                 <div>• Learn when linear vs. non-linear approaches work best</div>
