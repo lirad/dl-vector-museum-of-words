@@ -12,6 +12,34 @@ export const SEED_WORDS = [
   "space", "planet", "star", "galaxy", "moon"
 ];
 
+// Semantic presets for different types of relationships
+export const SEMANTIC_PRESETS = {
+  "Queens & Kings": {
+    description: "Famous queens, kings, and royalty across different domains",
+    words: ["Queen", "Queen Elizabeth", "King Charles", "Michael Jackson", "Pelé", "Elvis Presley", "Freddie Mercury", "crown", "throne", "royalty", "legend", "icon", "monarch", "kingdom"]
+  },
+  "Cultural Icons": {
+    description: "Mix of legendary people, artworks, and cultural phenomena",
+    words: ["Beatles", "Einstein", "Shakespeare", "Mona Lisa", "Mozart", "Leonardo da Vinci", "Beethoven", "Picasso", "genius", "masterpiece", "famous", "legendary", "classic", "timeless"]
+  },
+  "Same Word, Different Worlds": {
+    description: "Words with fascinating multiple meanings across contexts",
+    words: ["bank", "bat", "rock", "spring", "mouse", "turkey", "bark", "duck", "bear", "club", "bank account", "baseball bat", "rock music", "mouse computer"]
+  },
+  "Tech vs Nature": {
+    description: "Digital concepts that share names with natural phenomena",
+    words: ["cloud", "stream", "web", "python", "apple", "blackberry", "firefox", "safari", "windows", "thunder", "lightning", "storm", "river", "forest"]
+  },
+  "Colors & Emotions": {
+    description: "How colors connect to feelings and cultural meanings",
+    words: ["red", "blue", "green", "yellow", "purple", "black", "white", "gold", "love", "sadness", "envy", "happiness", "royalty", "mourning", "purity", "wealth"]
+  },
+  "Time & Space": {
+    description: "Temporal and spatial concepts and their relationships",
+    words: ["yesterday", "tomorrow", "future", "past", "present", "here", "there", "everywhere", "nowhere", "always", "never", "sometimes", "distance", "closeness"]
+  }
+};
+
 // Nice palette for cluster suggestions
 export const PALETTE = [
   "#6366f1", "#22c55e", "#ef4444", "#eab308", "#06b6d4", "#a855f7", "#f97316"

@@ -51,6 +51,16 @@ DL Vector Museum of Words is an interactive web application that makes the invis
 ![3D Visualization](screenshots/3d-visualization.png)
 *Immersive 3D exploration of semantic relationships - navigate through vector space and discover how words cluster by meaning*
 
+## 🌐 Live Demo
+
+**🎯 Try it now:** [https://dl-vector-museum-of-words.pages.dev](https://dl-vector-museum-of-words.pages.dev)
+
+Experience the DL Vector Museum of Words live! No installation required - just open the link and start exploring how language models understand and process text. The application is deployed on Cloudflare Pages for optimal performance worldwide.
+
+**Alternative URLs:**
+- **Production**: [https://master.dl-vector-museum-of-words.pages.dev](https://master.dl-vector-museum-of-words.pages.dev)
+- **Latest Build**: [https://f9845523.dl-vector-museum-of-words.pages.dev](https://f9845523.dl-vector-museum-of-words.pages.dev)
+
 ## ✨ Features
 
 ### 🎨 **Interactive Visualizations**
@@ -321,6 +331,35 @@ npm run lint
 
 # Build for production
 npm run build
+```
+
+### 🚀 **Deployment Options**
+
+The application supports multiple deployment platforms:
+
+#### **Cloudflare Pages** (Recommended)
+```bash
+# Deploy to Cloudflare Pages
+npm run deploy:cloudflare
+```
+- **✅ Live at**: [https://dl-vector-museum-of-words.pages.dev](https://dl-vector-museum-of-words.pages.dev)
+- **Features**: Global CDN, instant deployments, unlimited bandwidth
+- **Cost**: Free for most use cases
+
+#### **Other Platforms**
+```bash
+# Vercel
+npm run deploy:vercel
+
+# Netlify  
+npm run deploy:netlify
+
+# Surge.sh
+npm run deploy:surge
+
+# Docker (self-hosted)
+docker build -t dl-vector-museum-of-words .
+docker run -p 80:80 dl-vector-museum-of-words
 ```
 
 ### 📝 **Pull Request Guidelines**

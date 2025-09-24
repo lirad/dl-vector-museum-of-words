@@ -24,45 +24,166 @@ export function HelpModal({ onClose, neighbors }: { onClose: () => void; neighbo
             </p>
           </section>
           <section>
-            <div className="font-semibold mb-1">UMAP vs PCA (projection)</div>
-            <ul className="list-disc pl-5 space-y-1">
-              <li><span className="font-semibold">UMAP</span> (non‑linear) preserves <em>local neighborhoods</em> — clusters look tight; global distances may distort.</li>
-              <li><span className="font-semibold">PCA</span> (linear) keeps the biggest <em>axes of variance</em> — good for global structure, sometimes spreads clusters.</li>
-            </ul>
+            <div className="font-semibold mb-1">🔬 Dimensionality Reduction Techniques</div>
+            <p className="mb-2">
+              High-dimensional data (like our token-based embeddings) needs to be projected to 2D/3D for visualization. Each technique reveals different aspects of the data structure:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <div className="font-semibold text-blue-300 mb-1">🗺️ UMAP (Current)</div>
+                <div className="text-xs space-y-1 opacity-90">
+                  <div><strong>Type:</strong> Non-linear manifold learning</div>
+                  <div><strong>Preserves:</strong> Local neighborhoods & global topology</div>
+                  <div><strong>Best for:</strong> Discovering clusters and local structure</div>
+                  <div><strong>Speed:</strong> Fast for large datasets</div>
+                  <div><strong>Parameters:</strong> n_neighbors (local vs global), min_dist (cluster tightness)</div>
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                <div className="font-semibold text-green-300 mb-1">📊 PCA (Current)</div>
+                <div className="text-xs space-y-1 opacity-90">
+                  <div><strong>Type:</strong> Linear projection</div>
+                  <div><strong>Preserves:</strong> Maximum variance directions</div>
+                  <div><strong>Best for:</strong> Understanding main data directions</div>
+                  <div><strong>Speed:</strong> Very fast, deterministic</div>
+                  <div><strong>Limitation:</strong> May miss non-linear patterns</div>
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                <div className="font-semibold text-purple-300 mb-1">🌀 t-SNE (Popular Alternative)</div>
+                <div className="text-xs space-y-1 opacity-90">
+                  <div><strong>Type:</strong> Non-linear, probability-based</div>
+                  <div><strong>Preserves:</strong> Local similarities excellently</div>
+                  <div><strong>Best for:</strong> Cluster visualization</div>
+                  <div><strong>Limitation:</strong> Slow, can create false clusters</div>
+                  <div><strong>Note:</strong> Great for exploration but clusters may be misleading</div>
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                <div className="font-semibold text-orange-300 mb-1">🔢 Other Methods</div>
+                <div className="text-xs space-y-1 opacity-90">
+                  <div><strong>Truncated SVD:</strong> Like PCA but for sparse data</div>
+                  <div><strong>MDS:</strong> Preserves pairwise distances</div>
+                  <div><strong>Isomap:</strong> Non-linear, preserves geodesic distances</div>
+                  <div><strong>LLE:</strong> Local linear embedding</div>
+                  <div><strong>Random Projection:</strong> Fast approximation</div>
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+              <div className="font-semibold text-yellow-300 mb-1">🎯 Which to Choose?</div>
+              <div className="text-xs space-y-1 opacity-90">
+                <div><strong>For exploration:</strong> Start with UMAP (balanced view) or t-SNE (cluster focus)</div>
+                <div><strong>For interpretation:</strong> Use PCA to understand main variance directions</div>
+                <div><strong>For speed:</strong> PCA or Random Projection for large datasets</div>
+                <div><strong>For publishing:</strong> UMAP is becoming the new standard</div>
+              </div>
+            </div>
           </section>
           <section>
-            <div className="font-semibold mb-1">MiniLM Embeddings</div>
-            <p>
-              The app uses <em>MiniLM‑L6‑v2</em> sentence embeddings running in your browser (dim ≈ 384). 
-              This provides true semantic similarity and exposes BPE tokens + IDs in the Spotlight view.
-              The model downloads automatically on first use and is cached locally.
+            <div className="font-semibold mb-1">🤖 How GPT-4 Tokenizer Works</div>
+            <p className="mb-2">
+              GPT-4's tokenizer learned from vast amounts of text to break down language into meaningful tokens using Byte Pair Encoding (BPE). This creates token-based embeddings where:
             </p>
+            <div className="text-sm space-y-1">
+              <div>• <strong>Distance = Semantic similarity</strong> (closer = more related)</div>
+              <div>• <strong>Direction matters:</strong> "king" → "queen" similar to "man" → "woman"</div>
+              <div>• <strong>Context is key:</strong> "bank" (river) vs "bank" (money) have different vectors</div>
+              <div>• <strong>Unexpected connections:</strong> Reveals hidden cultural and linguistic patterns</div>
+            </div>
           </section>
           <section>
             <div className="font-semibold mb-1">Matrix room</div>
             <p>Shows pairwise cosine similarity as a heatmap (blue → low, red → high). Hover any cell to see the value.</p>
           </section>
           <section>
-            <div className="font-semibold mb-1">🧠 Understanding the Relationships</div>
+            <div className="font-semibold mb-1">🔤 Interactive Tokenizer</div>
             <p className="mb-2">
-              <span className="font-semibold">Cosine similarity works because:</span> Words with similar meanings have vectors pointing in similar directions in 384D space.
-              The <strong>angle</strong> between vectors matters more than their length. MiniLM learned these relationships from massive text datasets.
+              The tokenizer tab lets you explore how text gets broken down into tokens before being converted to embeddings. This is crucial for understanding how language models process text.
             </p>
             <div className="text-sm space-y-1">
-              <div><strong>🎯 Example relationships you might see:</strong></div>
-              <div>• "king" ↔ "queen" = ~0.8 🟢 (very similar, royal concepts)</div>
-              <div>• "happy" ↔ "joyful" = ~0.9 🟢 (nearly identical emotions)</div>
-              <div>• "car" ↔ "bicycle" = ~0.6 🟡 (both transportation, but different)</div>
-              <div>• "love" ↔ "mathematics" = ~0.1 🔴 (unrelated concepts)</div>
+              <div>• <strong>Real-time tokenization:</strong> See tokens update as you type</div>
+              <div>• <strong>Color-coded visualization:</strong> Each token gets a unique color</div>
+              <div>• <strong>Token statistics:</strong> Character count, compression ratio, and more</div>
+              <div>• <strong>Special token detection:</strong> Identifies [CLS], [SEP], and other control tokens</div>
+              <div>• <strong>BPE explanation:</strong> Learn how Byte Pair Encoding works</div>
             </div>
           </section>
           <section>
-            <div className="font-semibold mb-1">🎨 Color Coding</div>
+            <div className="font-semibold mb-1">🧠 Understanding Unexpected Relationships</div>
+            <p className="mb-2">
+              <span className="font-semibold">Why might "dog" and "piano" seem similar?</span> GPT-4's tokenizer learns from how words appear together in text across the internet. Unexpected similarities often reveal hidden connections:
+            </p>
             <div className="text-sm space-y-1">
-              <div>🟢 <strong>Green:</strong> Very similar (&gt;0.7) - Strong semantic relationship</div>
-              <div>🟡 <strong>Yellow:</strong> Moderately similar (0.4-0.7) - Some connection</div>
-              <div>🟠 <strong>Orange:</strong> Weakly similar (0.1-0.4) - Distant relationship</div>
-              <div>🔴 <strong>Red:</strong> Unrelated (&lt;0.1) - No meaningful connection</div>
+              <div><strong>🔍 Common reasons for surprising similarities:</strong></div>
+              <div>• <strong>Shared contexts:</strong> "dog" and "piano" both appear in home/family settings</div>
+              <div>• <strong>Cultural associations:</strong> Both are common in children's stories and media</div>
+              <div>• <strong>Sensory connections:</strong> Both can "make sounds" (barking, playing)</div>
+              <div>• <strong>Emotional contexts:</strong> Both associated with comfort, companionship, learning</div>
+              <div>• <strong>Grammatical patterns:</strong> Similar sentence structures and roles</div>
+            </div>
+          </section>
+          <section>
+            <div className="font-semibold mb-1">🎯 Typical Relationship Examples</div>
+            <div className="text-sm space-y-1">
+              <div>• "king" ↔ "queen" = ~0.8 🟢 (obvious semantic relationship)</div>
+              <div>• "happy" ↔ "joyful" = ~0.9 🟢 (synonyms)</div>
+              <div>• "dog" ↔ "piano" = ~0.3 🟠 (unexpected but contextually related)</div>
+              <div>• "car" ↔ "bicycle" = ~0.6 🟡 (category similarity)</div>
+              <div>• "love" ↔ "mathematics" = ~0.1 🔴 (truly unrelated)</div>
+            </div>
+          </section>
+          <section>
+            <div className="font-semibold mb-1">🎨 Similarity Scale Explained</div>
+            <div className="text-sm space-y-1">
+              <div>🟢 <strong>Green (0.7-1.0):</strong> Synonyms, obvious relationships ("happy" ↔ "joyful")</div>
+              <div>🟡 <strong>Yellow (0.4-0.7):</strong> Same category or domain ("car" ↔ "truck")</div>
+              <div>🟠 <strong>Orange (0.1-0.4):</strong> Contextual connections ("dog" ↔ "piano")</div>
+              <div>🔴 <strong>Red (0.0-0.1):</strong> No meaningful relationship found</div>
+            </div>
+            <p className="text-xs mt-2 opacity-80">
+              💡 <strong>Pro tip:</strong> Orange connections often reveal the most interesting cultural and contextual patterns!
+            </p>
+          </section>
+          <section>
+            <div className="font-semibold mb-1">📖 Real-World Applications</div>
+            <div className="text-sm space-y-2">
+              <div className="p-2 rounded bg-blue-500/10 border border-blue-500/20">
+                <div className="font-semibold text-blue-300 mb-1">🧬 Scientific Research</div>
+                <div className="text-xs opacity-90">
+                  • <strong>Genomics:</strong> t-SNE for visualizing cell types, UMAP for trajectory analysis<br/>
+                  • <strong>Neuroscience:</strong> PCA for brain imaging, dimensionality reduction for neural data<br/>
+                  • <strong>Drug discovery:</strong> Chemical space visualization with various projections
+                </div>
+              </div>
+              <div className="p-2 rounded bg-green-500/10 border border-green-500/20">
+                <div className="font-semibold text-green-300 mb-1">💼 Business & Tech</div>
+                <div className="text-xs opacity-90">
+                  • <strong>Recommendation systems:</strong> User/product embeddings visualization<br/>
+                  • <strong>Document analysis:</strong> Topic clustering and semantic search<br/>
+                  • <strong>Market research:</strong> Customer segmentation and behavior patterns
+                </div>
+              </div>
+              <div className="p-2 rounded bg-purple-500/10 border border-purple-500/20">
+                <div className="font-semibold text-purple-300 mb-1">🎨 Creative Fields</div>
+                <div className="text-xs opacity-90">
+                  • <strong>Art generation:</strong> Style space exploration with neural networks<br/>
+                  • <strong>Music analysis:</strong> Genre clustering and similarity visualization<br/>
+                  • <strong>Game design:</strong> Procedural content generation and balancing
+                </div>
+              </div>
+            </div>
+          </section>
+          <section>
+            <div className="font-semibold mb-1">🎮 How to Explore</div>
+            <div className="text-sm space-y-1">
+              <div>1. <strong>Click words</strong> to see their closest neighbors</div>
+              <div>2. <strong>Check the Matrix</strong> to compare any two words</div>
+              <div>3. <strong>Use 3D view</strong> to see the semantic landscape</div>
+              <div>4. <strong>Zoom and rotate</strong> in 3D to examine clusters</div>
+              <div>5. <strong>Add your own words</strong> to see where they fit</div>
+              <div>6. <strong>Switch between UMAP/PCA</strong> to see different organizational patterns</div>
+              <div>7. <strong>Adjust parameters</strong> to understand their effect on clustering</div>
             </div>
           </section>
         </div>

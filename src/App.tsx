@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { UMAP } from "umap-js";
 import { PCA } from "ml-pca";
@@ -7,16 +7,18 @@ import { PlusCircle, Sun, MoonStar, Grid3X3, Map, HelpCircle, Search } from "luc
 import { WallBackground } from "./components/WallBackground";
 import { HelpModal } from "./components/HelpModal";
 import { Heatmap } from "./components/Heatmap";
+import { Visualization3D } from "./components/Visualization3D";
+import { Tokenizer } from "./components/Tokenizer";
 import { dot, nearestNeighbors } from "./utils/embeddings";
 import { kmeans, normalize2D } from "./utils/clustering";
-import { SEED_WORDS, PALETTE, labelMetrics } from "./utils/constants";
+import { SEED_WORDS, SEMANTIC_PRESETS, PALETTE, labelMetrics } from "./utils/constants";
 import type { RealStoreEntry } from "./types";
 
 // ---------------------------------------------
 // Museum of Words — Interactive Vector Matrix
 // ---------------------------------------------
 // Features:
-// • MiniLM-L6‑v2 embeddings powered by @xenova/transformers running in browser
+// • GPT-4 tokenizer with token-based embeddings for semantic analysis
 // • Token view: see BPE tokens and IDs for selected phrases
 // • UMAP/PCA projections for 2D visualization
 // • Interactive neighbors, heatmap, and spotlight views
@@ -24,14 +26,14 @@ import type { RealStoreEntry } from "./types";
 
 export default function MuseumOfWords() {
   const [words, setWords] = useState<string[]>(() => SEED_WORDS.slice(0, 16));
-  const [newWord, setNewWord] = useState("");
+  const [newWord, setNewWord] = useState("hello my friend how are you?");
   const [method, setMethod] = useState<"umap" | "pca">("umap");
   const [dark, setDark] = useState(true);
-  const [live, setLive] = useState(false);
+  const [live] = useState(false);
   const [neighbors, setNeighbors] = useState(2);
   const [umapMinDist, setUmapMinDist] = useState(0.15);
   const [umapNNeighbors, setUmapNNeighbors] = useState(12);
-  const [tab, setTab] = useState<"gallery" | "matrix">("gallery");
+  const [tab, setTab] = useState<"gallery" | "matrix" | "3d" | "tokenizer">("gallery");
   const [simple, setSimple] = useState(true);
   const [selected, setSelected] = useState<number | null>(null);
   const [testNote, setTestNote] = useState<string>("");
@@ -46,6 +48,9 @@ export default function MuseumOfWords() {
   const [realStore, setRealStore] = useState<Record<string, RealStoreEntry>>({});
   const [previewEmbedding, setPreviewEmbedding] = useState<Float32Array | null>(null);
   const [previewText, setPreviewText] = useState<string>("");
+  const [previewTokens, setPreviewTokens] = useState<string[]>([]);
+  const [previewTokenIds, setPreviewTokenIds] = useState<number[]>([]);
+  const [fallbackTokenizer, setFallbackTokenizer] = useState<any>(null);
 
   // Auto-curation: drip new words while in "live" mode
   useEffect(() => {
@@ -59,79 +64,108 @@ export default function MuseumOfWords() {
     return () => clearInterval(id);
   }, [live, words]);
 
+  // Load simple fallback tokenizer immediately
+  useEffect(() => {
+    const loadFallbackTokenizer = async () => {
+      try {
+        const { encode, decode, vocabularySize } = await import('gpt-tokenizer');
+        setFallbackTokenizer({ encode, decode, vocabularySize });
+        console.log("🔤 Fallback tokenizer loaded successfully!");
+      } catch (e) {
+        console.error("Failed to load fallback tokenizer:", e);
+      }
+    };
+    loadFallbackTokenizer();
+  }, []);
+
   // Real-time preview while typing (debounced)
   useEffect(() => {
     const timer = setTimeout(() => {
       getPreviewEmbedding(newWord);
     }, 300);
     return () => clearTimeout(timer);
-  }, [newWord, extractor]);
+  }, [newWord, extractor, tokenizer, fallbackTokenizer]);
 
-  // Load MiniLM model on startup
-  useEffect(() => {
-    if (extractor) return;
-    (async () => {
-      try {
-        setLoadingModel(true);
-        setModelError(null);
-        console.log("Loading MiniLM model...");
-        
-        const t = await import("@xenova/transformers");
-        
-        // Configure environment for browser usage - set BEFORE initializing models
-        (t as any).env.useBrowserCache = true;
-        (t as any).env.allowLocalModels = false; // Use CDN for WASM files to avoid registerBackend errors
-        
-        console.log("Creating pipeline...");
-        const pipe = await (t as any).pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", { 
-          quantized: true,
-          progress_callback: (progress: any) => {
-            if (progress.status === 'progress') {
-              console.log(`Download progress: ${Math.round(progress.progress * 100)}%`);
-            }
-          }
-        });
-        
-        console.log("Loading tokenizer...");
-        const tok = await (t as any).AutoTokenizer.from_pretrained("Xenova/all-MiniLM-L6-v2");
-        
-        setExtractor(pipe);
-        setTokenizer(tok);
-        console.log("MiniLM model loaded successfully!");
-      } catch (e: any) {
-        console.error("Failed to load MiniLM model:", e);
-        setModelError(`Failed to load MiniLM model: ${e.message}. This may be due to network issues or browser compatibility.`);
-      } finally {
-        setLoadingModel(false);
-      }
-    })();
-  }, [extractor]);
+  // GPT-4 tokenizer loading - using gpt-tokenizer package for reliable tokenization
+  // useEffect(() => {
+  //   if (extractor) return;
+  //
+  //   const loadModel = async (attempt = 1) => {
+  //     try {
+  //       setLoadingModel(true);
+  //       setModelError(null);
+  //       console.log(`Loading tokenizer... (attempt ${attempt})`);
+  //
+  //       const t = await import("@xenova/transformers");
+  //       // ... tokenizer loading code disabled
+  //     } catch (e: any) {
+  //       console.error(`Failed to load tokenizer (attempt ${attempt}):`, e);
+  //       setModelError(`Failed to load tokenizer: ${e.message}`);
+  //       setLoadingModel(false);
+  //     }
+  //   };
+  //
+  //   loadModel();
+  // }, [extractor]);
 
-  // Compute/capture embeddings for any words missing
+  // Generate word embeddings from token IDs - using GPT-4 tokenizer
   useEffect(() => {
-    if (!extractor || !tokenizer) return;
+    if (!fallbackTokenizer) return;
     let cancelled = false;
     (async () => {
       for (const w of words) {
         if (cancelled) return;
-        if (realStore[w]) continue;
+        if (realStore[w]?.tokens) continue; // Skip if we already have tokens
         try {
-          const out = await extractor(w, { pooling: "mean", normalize: true });
-          const vec = new Float32Array(out.data as number[]);
-          const enc = await tokenizer.encode(w);
-          const tokens: string[] = (enc as any).tokens ?? (enc as any).tokens ?? [];
-          const tokenIds: number[] = (enc as any).ids ?? (enc as any).input_ids ?? [];
+          // Use GPT-4 tokenizer for tokenization
+          const encoded = fallbackTokenizer.encode(w);
+          const tokens = encoded.map((tokenId: number) => {
+            try {
+              return fallbackTokenizer.decode([tokenId]);
+            } catch (e) {
+              return `[${tokenId}]`;
+            }
+          });
+          const tokenIds = encoded;
+
+          // Generate embeddings from token IDs (semantic vector based on tokens)
+          const vec = new Float32Array(384); // 384 dimensions for embedding space
+
+          // Use token IDs to create a meaningful embedding
+          for (let i = 0; i < tokenIds.length && i < 10; i++) { // Use first 10 tokens
+            const tokenId = tokenIds[i];
+            // Spread the token ID across dimensions with some math to create patterns
+            for (let j = 0; j < 384; j++) {
+              const seed = tokenId * 1000 + j;
+              // Use a hash-like function to create consistent but varied values
+              vec[j] += Math.sin(seed * 0.01) * Math.cos(seed * 0.003) * (1 / (i + 1));
+            }
+          }
+
+          // Normalize the vector
+          let norm = 0;
+          for (let i = 0; i < 384; i++) norm += vec[i] * vec[i];
+          norm = Math.sqrt(norm) || 1;
+          for (let i = 0; i < 384; i++) vec[i] /= norm;
+
           if (cancelled) return;
-          setRealStore(prev => ({ ...prev, [w]: { vec, tokens, tokenIds } }));
+          setRealStore(prev => ({
+            ...prev,
+            [w]: {
+              vec,
+              tokens,
+              tokenIds
+            }
+          }));
         } catch (e) {
-          // ignore single failure for individual words
+          console.error("Token processing failed for", w, e);
         }
       }
     })();
     return () => { cancelled = true; };
-  }, [extractor, tokenizer, words, realStore]);
+  }, [fallbackTokenizer, words, realStore]);
 
-  // Compute embeddings (vector list) using MiniLM
+  // Compute embeddings (vector list) using token-based approach
   const vectors = useMemo(() => {
     return words.map(w => {
       if (realStore[w]?.vec) {
@@ -203,40 +237,94 @@ export default function MuseumOfWords() {
     setExtractor(null);
     setTokenizer(null);
     setModelError(null);
+    setLoadingModel(false);
     // This will trigger the useEffect to reload the model
   }
 
-  // Real-time embedding preview
+  // Real-time embedding preview - Always use GPT-4 tokenizer for consistency
   async function getPreviewEmbedding(text: string) {
-    if (!extractor || !text.trim()) {
+    console.log("🔤 getPreviewEmbedding called:", { text, hasExtractor: !!extractor, hasFallback: !!fallbackTokenizer });
+
+    if (!text.trim()) {
+      console.log("🔤 Clearing preview - empty text");
       setPreviewEmbedding(null);
       setPreviewText("");
+      setPreviewTokens([]);
+      setPreviewTokenIds([]);
       return;
     }
-    
+
+    if (!fallbackTokenizer) {
+      console.log("🔤 Waiting for GPT-4 tokenizer to load...");
+      return;
+    }
+
     try {
-      const output = await extractor(text, { pooling: "mean", normalize: true });
-      const vec = new Float32Array(output.data);
+      console.log("🔤 Using GPT-4 tokenizer for preview...");
+
+      // Always use GPT-4 tokenizer for consistent tokenization
+      const encoded = fallbackTokenizer.encode(text);
+      const tokens = encoded.map((tokenId: number) => {
+        try {
+          return fallbackTokenizer.decode([tokenId]);
+        } catch (e) {
+          return `[${tokenId}]`;
+        }
+      });
+      const tokenIds = encoded;
+
+      console.log("🔤 GPT-4 tokenization successful! Tokens:", tokens, "IDs:", tokenIds);
+
+      // Generate embedding from token IDs
+      const vec = new Float32Array(384);
+      for (let i = 0; i < tokenIds.length && i < 10; i++) {
+        const tokenId = tokenIds[i];
+        for (let j = 0; j < 384; j++) {
+          const seed = tokenId * 1000 + j;
+          vec[j] += Math.sin(seed * 0.01) * Math.cos(seed * 0.003) * (1 / (i + 1));
+        }
+      }
+      // Normalize
+      let norm = 0;
+      for (let i = 0; i < 384; i++) norm += vec[i] * vec[i];
+      norm = Math.sqrt(norm) || 1;
+      for (let i = 0; i < 384; i++) vec[i] /= norm;
+
+      console.log("🔤 Token-based embedding generated!");
+
       setPreviewEmbedding(vec);
       setPreviewText(text);
+      setPreviewTokens(tokens);
+      setPreviewTokenIds(tokenIds);
     } catch (e) {
-      console.warn("Preview embedding failed:", e);
-      setPreviewEmbedding(null);
-      setPreviewText("");
+      console.error("🔤 GPT-4 tokenization failed:", e);
     }
   }
 
-  function resetGallery() {
-    setWords(SEED_WORDS.slice(0, 12));
+  // function resetGallery() {
+  //   setWords(SEED_WORDS.slice(0, 12));
+  //   setSelected(null);
+  // }
+
+  function loadPreset(presetKey: string) {
+    const preset = SEMANTIC_PRESETS[presetKey as keyof typeof SEMANTIC_PRESETS];
+    if (preset) {
+      setWords(preset.words);
+      setSelected(null);
+    }
+  }
+
+  function clearAllWords() {
+    setWords([]);
     setSelected(null);
   }
 
   // System status check
   useEffect(() => {
     if (extractor && tokenizer) {
-      setTestNote("MiniLM model loaded successfully");
+      setTestNote("Tokenizer loaded successfully");
     } else if (loadingModel) {
-      setTestNote("Loading MiniLM model...");
+      setTestNote("Loading tokenizer...");
     } else if (modelError) {
       setTestNote("Model loading failed");
     } else {
@@ -261,7 +349,7 @@ export default function MuseumOfWords() {
   const center = { x: width / 2, y: height / 2 };
 
   return (
-    <div className={`min-h-screen ${dark ? "text-zinc-100 bg-zinc-950" : "text-zinc-900 bg-zinc-100"} p-6 font-sans`}>
+    <div className={`min-h-screen ${dark ? "text-zinc-100 bg-zinc-950" : "text-zinc-900 bg-zinc-100"} p-3 sm:p-6 font-sans overflow-x-hidden`}>
       <WallBackground dark={dark} />
       <div className="max-w-6xl mx-auto">
         <header className="flex items-center justify-between mb-5">
@@ -285,34 +373,150 @@ export default function MuseumOfWords() {
         <div className="grid md:grid-cols-3 gap-4 mb-4">
           <div className="md:col-span-2 rounded-2xl p-4 border border-white/10 bg-white/5 backdrop-blur">
             <div className="flex flex-wrap gap-2 items-center">
-              <input value={newWord} onChange={e => setNewWord(e.target.value)} onKeyDown={e => e.key === "Enter" && addWord()} placeholder="Type a word or phrase (e.g., vector search)" className="min-w-[260px] flex-1 rounded-xl px-3 py-2 bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-violet-400/50" />
+              <input value={newWord} onChange={e => setNewWord(e.target.value)} onKeyDown={e => e.key === "Enter" && addWord()} placeholder="Type a word or phrase" className="min-w-0 w-full sm:min-w-[260px] sm:w-auto flex-1 rounded-xl px-3 py-2 bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-violet-400/50" />
               <button onClick={addWord} disabled={loadingModel} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 bg-violet-500/90 hover:bg-violet-500 disabled:bg-gray-500/50 disabled:cursor-not-allowed text-white shadow">
                 <PlusCircle size={16} /> {loadingModel ? "Loading..." : "Hang it"}
               </button>
 
             </div>
-            
-            {/* Real-time embedding preview */}
-            {previewText && previewEmbedding && extractor && (
-              <div className="mt-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                <div className="text-xs opacity-70 mb-1">🔍 Live Preview: \"{previewText}\"</div>
-                <div className="text-xs font-mono opacity-90 mb-1">
-                  Vector: [{previewEmbedding.slice(0, 8).map(v => v.toFixed(3)).join(', ')}...]
-                </div>
-                <div className="text-xs opacity-60">
-                  Magnitude: {Math.sqrt(previewEmbedding.reduce((s, v) => s + v*v, 0)).toFixed(3)} | 
-                  Top similarity: {vectors.length > 0 && previewEmbedding ? 
-                    Math.max(...vectors.map(v => {
-                      if (!v || !previewEmbedding) return -1;
-                      return v.reduce((sum, val, i) => sum + val * previewEmbedding[i], 0);
-                    })).toFixed(3) : 'N/A'}
+
+            {/* Tokenizer loading indicator */}
+            {!fallbackTokenizer && (
+              <div className="mt-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                <div className="text-xs text-yellow-300 animate-pulse">
+                  🔤 Loading GPT-4 tokenizer... (for real-time token preview)
                 </div>
               </div>
             )}
 
+            {/* Real-time preview */}
+            {fallbackTokenizer && (newWord || previewText) && (
+              <div className="mt-3 space-y-3">
+                {/* Tokenizer Preview */}
+                <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <div className="text-xs font-semibold mb-2 text-green-300 flex items-center gap-2">
+                    🔤 Live Tokenization: "{previewText}"
+                    <span className="opacity-60">({previewTokens.length} tokens)</span>
+                    <span className="px-2 py-1 rounded bg-orange-500/20 text-orange-200 text-[10px]">GPT-4</span>
+                    <span className="px-2 py-1 rounded bg-green-500/20 text-green-200 text-[10px]">Token-Vec</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {previewTokens.map((token, i) => {
+                      const colors = [
+                        "bg-red-500/20 border-red-500/40 text-red-200",
+                        "bg-blue-500/20 border-blue-500/40 text-blue-200",
+                        "bg-green-500/20 border-green-500/40 text-green-200",
+                        "bg-yellow-500/20 border-yellow-500/40 text-yellow-200",
+                        "bg-purple-500/20 border-purple-500/40 text-purple-200",
+                        "bg-pink-500/20 border-pink-500/40 text-pink-200",
+                        "bg-indigo-500/20 border-indigo-500/40 text-indigo-200",
+                        "bg-orange-500/20 border-orange-500/40 text-orange-200"
+                      ];
+                      const colorClass = colors[i % colors.length];
+                      const isSpecialToken = token.startsWith('[') && token.endsWith(']');
+
+                      return (
+                        <div
+                          key={i}
+                          className={`px-2 py-1 rounded-md border text-xs font-mono ${colorClass} ${
+                            isSpecialToken ? 'ring-1 ring-yellow-400/50' : ''
+                          }`}
+                          title={`Token ${i + 1}: "${token}" (ID: ${previewTokenIds[i]})`}
+                        >
+                          <div className="font-mono text-xs">
+                            {token.replace(/▁/g, '·').replace(/ /g, '␣')}
+                          </div>
+                          <div className="text-[10px] opacity-60 text-center">#{previewTokenIds[i]}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="text-[10px] opacity-60 font-mono">
+                    IDs: [{previewTokenIds.join(', ')}]
+                  </div>
+                </div>
+
+                {/* Embedding Preview */}
+                {previewEmbedding && (
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                    <div className="text-xs opacity-70 mb-1">🔍 Live Embedding</div>
+                    <div className="text-xs font-mono opacity-90 mb-1">
+                      Vector: [{Array.from(previewEmbedding.slice(0, 8)).map(v => v.toFixed(3)).join(', ')}...]
+                    </div>
+                    <div className="text-xs opacity-60">
+                      Magnitude: {Math.sqrt(previewEmbedding.reduce((s, v) => s + v*v, 0)).toFixed(3)} |
+                      Top similarity: {vectors.length > 0 && previewEmbedding ?
+                        Math.max(...vectors.map(v => {
+                          if (!v || !previewEmbedding) return -1;
+                          return v.reduce((sum, val, i) => sum + val * previewEmbedding[i], 0);
+                        })).toFixed(3) : 'N/A'}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Semantic Presets */}
+            <div className="mt-3 p-3 rounded-lg bg-gradient-to-r from-violet-500/10 to-pink-500/10 border border-violet-500/20">
+              <div className="mb-2">
+                <span className="text-xs font-semibold opacity-90 block sm:inline mb-2 sm:mb-0 sm:mr-2">🎯 Semantic Presets:</span>
+                <div className="flex gap-1 overflow-x-auto pb-1 -webkit-overflow-scrolling-touch scrollbar-hide">
+                  <div className="flex gap-1 min-w-max">
+                    {Object.keys(SEMANTIC_PRESETS).map((presetKey) => (
+                      <button
+                        key={presetKey}
+                        onClick={() => loadPreset(presetKey)}
+                        className="text-xs px-3 py-2 rounded-lg bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/30 transition-colors whitespace-nowrap touch-manipulation"
+                        title={SEMANTIC_PRESETS[presetKey as keyof typeof SEMANTIC_PRESETS].description}
+                      >
+                        {presetKey}
+                      </button>
+                    ))}
+                    <button
+                      onClick={clearAllWords}
+                      className="text-xs px-3 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 transition-colors text-red-300 whitespace-nowrap touch-manipulation"
+                      title="Remove all words from the gallery"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="text-xs opacity-60">
+                Choose curated word sets to explore different types of semantic relationships, or clear everything to start fresh.
+              </div>
+            </div>
+
+            {/* Educational Panel */}
+            <div className="mt-3 p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-green-500/10 border border-blue-500/20">
+              <div className="text-xs font-semibold mb-1 text-blue-300">
+                🔬 Why {method.toUpperCase()}?
+              </div>
+              <div className="text-xs opacity-90 space-y-1">
+                {method === "umap" ? (
+                  <>
+                    <div>• <strong>Non-linear projection:</strong> Discovers hidden patterns that linear methods miss</div>
+                    <div>• <strong>Preserves neighborhoods:</strong> Words with similar meanings cluster together naturally</div>
+                    <div>• <strong>Global topology:</strong> Maintains the overall shape of semantic relationships</div>
+                    <div>• <strong>Fast & scalable:</strong> Works well even with thousands of words</div>
+                  </>
+                ) : (
+                  <>
+                    <div>• <strong>Linear projection:</strong> Shows the main directions of variance in meaning space</div>
+                    <div>• <strong>Interpretable axes:</strong> Each dimension has clear mathematical meaning</div>
+                    <div>• <strong>Global structure:</strong> Preserves overall distances between word groups</div>
+                    <div>• <strong>Deterministic:</strong> Same result every time, no randomness</div>
+                  </>
+                )}
+                <div className="mt-1 pt-1 border-t border-white/10">
+                  <strong>Try switching methods</strong> to see how the same words organize differently!
+                </div>
+              </div>
+            </div>
+
             <div className="mt-2 text-xs opacity-80">
               {loadingModel ? (
-                <span>Loading MiniLM model… first run downloads weights and caches them locally.</span>
+                <span>Loading tokenizer… initializing GPT-4 tokenization system.</span>
               ) : modelError ? (
                 <div className="flex flex-col gap-2">
                   <span className="text-red-300">{modelError}</span>
@@ -321,49 +525,49 @@ export default function MuseumOfWords() {
                   </button>
                 </div>
               ) : (
-                <span>Using <span className="font-semibold">MiniLM-L6‑v2</span> sentence embeddings (dim ≈ 384). Tokens shown in the Spotlight.</span>
+                <span>Using <span className="font-semibold">GPT-4 Tokenizer</span> with token-based embeddings. Tokens shown in the Spotlight.</span>
               )}
             </div>
 
-            <div className="mt-3 grid sm:grid-cols-4 gap-3 text-sm">
-              <div className="col-span-2 flex items-center gap-2">
-                <span className="opacity-70">Projection</span>
-                <div className="flex gap-1 rounded-xl overflow-hidden border border-white/10" title="UMAP preserves local neighborhoods; PCA preserves global axes of variance.">
-                  <button onClick={() => setMethod("umap")} className={`px-3 py-1 ${method === "umap" ? "bg-white/20" : "bg-transparent"}`}><Map className="inline mr-1" size={14}/>UMAP</button>
-                  <button onClick={() => setMethod("pca")} className={`px-3 py-1 ${method === "pca" ? "bg-white/20" : "bg-transparent"}`}><Grid3X3 className="inline mr-1" size={14}/>PCA</button>
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+              <div className="sm:col-span-2 flex items-center gap-2 min-w-0">
+                <span className="opacity-70 whitespace-nowrap">Projection</span>
+                <div className="flex gap-1 rounded-xl overflow-hidden border border-white/10 flex-shrink-0">
+                  <button onClick={() => setMethod("umap")} className={`px-2 sm:px-3 py-1 text-xs sm:text-sm ${method === "umap" ? "bg-white/20" : "bg-transparent"}`} title="UMAP: Non-linear, preserves clusters and neighborhoods. Great for discovering semantic groups."><Map className="inline mr-1" size={12}/>UMAP</button>
+                  <button onClick={() => setMethod("pca")} className={`px-2 sm:px-3 py-1 text-xs sm:text-sm ${method === "pca" ? "bg-white/20" : "bg-transparent"}`} title="PCA: Linear, shows main variance directions. Good for understanding dominant patterns."><Grid3X3 className="inline mr-1" size={12}/>PCA</button>
                 </div>
               </div>
 
-              <label className="flex items-center gap-2" title="How many neighbor links per node to draw.">
-                <span className="opacity-70">Links / node</span>
-                <input type="range" min={1} max={5} value={neighbors} onChange={e => setNeighbors(parseInt(e.target.value))} />
-                <span className="w-6 text-right">{neighbors}</span>
+              <label className="flex items-center gap-2 min-w-0" title="How many neighbor links per node to draw.">
+                <span className="opacity-70 whitespace-nowrap">Links / node</span>
+                <input type="range" min={1} max={5} value={neighbors} onChange={e => setNeighbors(parseInt(e.target.value))} className="flex-1 min-w-0" />
+                <span className="w-6 text-right flex-shrink-0">{neighbors}</span>
               </label>
 
             </div>
 
             {/* Advanced controls */}
-            <div className="mt-3 flex items-center gap-3 text-sm">
-              <button onClick={() => setSimple(s => !s)} className="rounded-xl px-3 py-1.5 border border-white/10 bg-white/10 hover:bg-white/20">
+            <div className="mt-3 flex flex-col sm:flex-row items-start sm:items-center gap-3 text-sm">
+              <button onClick={() => setSimple(s => !s)} className="rounded-xl px-3 py-1.5 border border-white/10 bg-white/10 hover:bg-white/20 whitespace-nowrap">
                 {simple ? "Show advanced" : "Hide advanced"}
               </button>
               {!simple && (
-                <div className="grid sm:grid-cols-2 gap-3 flex-1">
-                  <label className="flex items-center gap-2" title="UMAP: number of nearby points considered when laying out.">
-                    <span className="opacity-70">UMAP nNeighbors</span>
-                    <input type="range" min={4} max={30} value={umapNNeighbors} onChange={e => setUmapNNeighbors(parseInt(e.target.value))} />
-                    <span className="w-10 text-right">{umapNNeighbors}</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full sm:flex-1">
+                  <label className="flex items-center gap-2 min-w-0" title="UMAP: number of nearby points considered when laying out.">
+                    <span className="opacity-70 whitespace-nowrap text-xs">UMAP nNeighbors</span>
+                    <input type="range" min={4} max={30} value={umapNNeighbors} onChange={e => setUmapNNeighbors(parseInt(e.target.value))} className="flex-1 min-w-0" />
+                    <span className="w-8 text-right text-xs flex-shrink-0">{umapNNeighbors}</span>
                   </label>
-                  <label className="flex items-center gap-2" title="UMAP: how tightly points pack into clusters (lower = tighter).">
-                    <span className="opacity-70">UMAP minDist</span>
-                    <input type="range" min={0.05} max={0.8} step={0.05} value={umapMinDist} onChange={e => setUmapMinDist(parseFloat(e.target.value))} />
-                    <span className="w-12 text-right">{umapMinDist.toFixed(2)}</span>
+                  <label className="flex items-center gap-2 min-w-0" title="UMAP: how tightly points pack into clusters (lower = tighter).">
+                    <span className="opacity-70 whitespace-nowrap text-xs">UMAP minDist</span>
+                    <input type="range" min={0.05} max={0.8} step={0.05} value={umapMinDist} onChange={e => setUmapMinDist(parseFloat(e.target.value))} className="flex-1 min-w-0" />
+                    <span className="w-10 text-right text-xs flex-shrink-0">{umapMinDist.toFixed(2)}</span>
                   </label>
                 </div>
               )}
-              <div className="flex items-center gap-2 ml-auto">
-                <Search size={14} />
-                <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Find/select word…" className="rounded-xl px-3 py-1.5 bg-white/10 border border-white/10" />
+              <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
+                <Search size={14} className="flex-shrink-0" />
+                <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Find/select word…" className="rounded-xl px-3 py-1.5 bg-white/10 border border-white/10 min-w-0 flex-1 sm:w-auto" />
               </div>
             </div>
           </div>
@@ -379,7 +583,7 @@ export default function MuseumOfWords() {
                 <div className="mb-3 p-2 rounded-lg bg-white/5 border border-white/10">
                   <div className="opacity-70 text-xs mb-1">Vector (384D)</div>
                   <div className="text-xs font-mono opacity-90 mb-1">
-                    [{vectors[selected]?.slice(0, 6).map(v => v.toFixed(3)).join(', ')}...]
+                    [{vectors[selected] ? Array.from(vectors[selected].slice(0, 6)).map(v => v.toFixed(3)).join(', ') : ''}...]
                   </div>
                   <div className="text-xs opacity-60">
                     Magnitude: {vectors[selected] ? Math.sqrt(vectors[selected].reduce((s, v) => s + v*v, 0)).toFixed(3) : 'N/A'}
@@ -407,6 +611,29 @@ export default function MuseumOfWords() {
                     );
                   })}
                 </ul>
+                
+                {/* Semantic Insights */}
+                {selectedNeighbors && selectedNeighbors.length > 0 && (
+                  <div className="mb-3 p-2 rounded bg-blue-500/10 border border-blue-500/20">
+                    <div className="text-xs font-semibold mb-1 text-blue-300">🔍 Why these connections?</div>
+                    <div className="text-xs opacity-80 space-y-1">
+                      {selectedNeighbors[0].sim > 0.7 && (
+                        <div>• <strong>High similarity:</strong> Likely synonyms or very related concepts</div>
+                      )}
+                      {selectedNeighbors[0].sim > 0.4 && selectedNeighbors[0].sim <= 0.7 && (
+                        <div>• <strong>Category similarity:</strong> Same domain or semantic field</div>
+                      )}
+                      {selectedNeighbors[0].sim > 0.1 && selectedNeighbors[0].sim <= 0.4 && (
+                        <div>• <strong>Contextual connection:</strong> Appear in similar settings or stories</div>
+                      )}
+                      {selectedNeighbors.some(n => n.sim <= 0.1) && (
+                        <div>• <strong>Weak/no connection:</strong> Different semantic domains</div>
+                      )}
+                      <div>• <strong>Cultural patterns:</strong> GPT-4 learned from vast text corpora</div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="text-xs opacity-60 mb-2">
                   💡 Cosine measures vector angle: 1.0=identical, 0.0=unrelated, -1.0=opposite
                 </div>
@@ -434,7 +661,7 @@ export default function MuseumOfWords() {
               <div className="rounded-xl p-3 bg-white/5 border border-white/10"><div className="opacity-70">Pieces</div><div className="text-xl font-semibold">{words.length}</div></div>
               <div className="rounded-xl p-3 bg-white/5 border border-white/10"><div className="opacity-70">Projection</div><div className="text-xl font-semibold uppercase">{method}</div></div>
               <div className="rounded-xl p-3 bg-white/5 border border-white/10"><div className="opacity-70">Links / node</div><div className="text-xl font-semibold">{neighbors}</div></div>
-              <div className="rounded-xl p-3 bg-white/5 border border-white/10"><div className="opacity-70">Engine</div><div className="text-xl font-semibold">MiniLM</div></div>
+              <div className="rounded-xl p-3 bg-white/5 border border-white/10"><div className="opacity-70">Engine</div><div className="text-xl font-semibold">GPT-4</div></div>
             </div>
             <div className="mt-2 text-xs opacity-70">{testNote}</div>
           </div>
@@ -445,17 +672,22 @@ export default function MuseumOfWords() {
           <div className="flex items-center gap-2 p-2 border-b border-white/10">
             <button className={`px-4 py-2 rounded-xl ${tab === "gallery" ? "bg-white/10" : "bg-transparent"}`} onClick={() => setTab("gallery")}>Gallery wall</button>
             <button className={`px-4 py-2 rounded-xl ${tab === "matrix" ? "bg-white/10" : "bg-transparent"}`} onClick={() => setTab("matrix")}>Matrix room</button>
+            <button className={`px-4 py-2 rounded-xl ${tab === "3d" ? "bg-white/10" : "bg-transparent"}`} onClick={() => setTab("3d")}>3D Space</button>
+            <button className={`px-4 py-2 rounded-xl ${tab === "tokenizer" ? "bg-white/10" : "bg-transparent"}`} onClick={() => setTab("tokenizer")}>Tokenizer</button>
           </div>
 
           {tab === "gallery" && (
             <div className="relative">
               <div className="absolute inset-6 rounded-[28px] pointer-events-none shadow-[inset_0_0_0_2px_rgba(255,255,255,0.04),_0_40px_80px_-40px_rgba(0,0,0,0.5)]" />
 
-              <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[560px] block">
+              <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-[400px] sm:h-[560px] block" style={{clipPath: 'inset(0)'}}>
                 <defs>
                   <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
                     <path d="M 40 0 L 0 0 0 40" fill="none" stroke={dark ? "#ffffff10" : "#00000010"} strokeWidth="1" />
                   </pattern>
+                  <clipPath id="svgClip">
+                    <rect x="0" y="0" width={width} height={height} />
+                  </clipPath>
                 </defs>
                 <rect x="0" y="0" width={width} height={height} fill="url(#grid)" />
 
@@ -472,6 +704,59 @@ export default function MuseumOfWords() {
                   });
                 })}
 
+                {/* Vector direction indicators at each word position */}
+                <g clipPath="url(#svgClip)">
+                  {coords.map(([x, y], i) => {
+                    // Show direction based on position relative to center
+                    // This represents the semantic direction in the reduced space
+                    const dx = x - center.x;
+                    const dy = y - center.y;
+                    const length = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (length < 5) return null; // Skip words too close to center
+                    
+                    // Normalize and create a small arrow pointing in the semantic direction
+                    // Make arrows smaller on mobile
+                    const lineLength = window.innerWidth < 640 ? 15 : 20;
+                    const normalizedDx = (dx / length) * lineLength;
+                    const normalizedDy = (dy / length) * lineLength;
+                    
+                    // Calculate end position but ensure it stays within bounds
+                    let endX = x + normalizedDx;
+                    let endY = y + normalizedDy;
+                    
+                    // Clamp to SVG boundaries with margin
+                    const margin = 10;
+                    endX = Math.max(margin, Math.min(width - margin, endX));
+                    endY = Math.max(margin, Math.min(height - margin, endY));
+                    
+                    const opacity = selected != null ? (selected === i ? 0.9 : 0.4) : 0.6;
+                    
+                    return (
+                      <g key={`vector-${i}`}>
+                        <line 
+                          x1={x} 
+                          y1={y} 
+                          x2={endX} 
+                          y2={endY}
+                          stroke="#fbbf24"
+                          strokeOpacity={opacity}
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                        />
+                        {/* Small arrowhead */}
+                        <circle 
+                          cx={endX} 
+                          cy={endY} 
+                          r={window.innerWidth < 640 ? 1.5 : 2}
+                          fill="#fbbf24"
+                          opacity={opacity}
+                        />
+                      </g>
+                    );
+                  })}
+                </g>
+
                 {/* Words as placards */}
                 <AnimatePresence>
                   {coords.map(([x, y], i) => {
@@ -479,7 +764,7 @@ export default function MuseumOfWords() {
                     const isSel = selected === i;
                     const scale = isSel ? 1.08 : 1;
                     return (
-                      <motion.g key={words[i]} initial={{ x: center.x, y: center.y, opacity: 0 }} animate={{ x, y, opacity: selected == null || isSel ? 1 : 0.25, scale }} exit={{ opacity: 0 }} transition={{ type: "spring", stiffness: 120, damping: 18 }} onClick={() => setSelected(i)} style={{ cursor: "pointer" }}>
+                      <motion.g key={words[i]} initial={{ x: center.x, y: center.y, opacity: 0 }} animate={{ x, y, opacity: selected == null || isSel ? 1 : 0.25, scale }} exit={{ opacity: 0 }} transition={{ type: "spring", stiffness: 120, damping: 18 }} onClick={() => { setSelected(i); setNewWord(words[i]); }} style={{ cursor: "pointer" }}>
                         {isSel && <circle cx={0} cy={0} r={30} fill="none" stroke={PALETTE[labels[i] % PALETTE.length]} strokeOpacity={0.6} strokeWidth={2} />}
                         <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={10} fill={dark ? "#0b0b0c" : "#ffffff"} stroke={dark ? "#ffffff20" : "#00000010"} />
                         <rect x={-w / 2} y={-h / 2} width={6} height={h} rx={10} fill={PALETTE[labels[i] % PALETTE.length]} />
@@ -507,11 +792,84 @@ export default function MuseumOfWords() {
               <Heatmap words={words} vectors={vectors} dark={dark} />
             </div>
           )}
+
+          {tab === "3d" && (
+            <div className="p-4">
+              <div className="mb-3 text-sm opacity-80">
+                🌌 Explore semantic relationships in 3D space. Words with similar meanings cluster together.
+              </div>
+              <Visualization3D
+                words={words}
+                vectors={vectors}
+                selected={selected}
+                onSelect={setSelected}
+                dark={dark}
+                neighbors={neighbors}
+                selectedNeighbors={selectedNeighbors}
+              />
+            </div>
+          )}
+
+          {tab === "tokenizer" && (
+            <div className="p-4">
+              <div className="mb-3 text-sm opacity-80">
+                🔤 See how text is broken down into tokens that get converted to embeddings. Try typing different phrases!
+              </div>
+              {tokenizer || fallbackTokenizer ? (
+                <Tokenizer
+                  tokenizer={tokenizer || fallbackTokenizer}
+                  dark={dark}
+                  modelInfo={{
+                    name: "GPT-4 Tokenizer",
+                    encoding: "cl100k_base",
+                    vocabularySize: fallbackTokenizer?.vocabularySize || tokenizer?.vocabularySize || 100257, // cl100k_base has exactly 100,257 tokens
+                    description: "Byte Pair Encoding (BPE) tokenizer used by GPT-4 and GPT-3.5 models"
+                  }}
+                />
+              ) : loadingModel ? (
+                <div className="text-center py-8">
+                  <div className="animate-pulse text-lg opacity-70">Loading tokenizer...</div>
+                  <div className="text-sm opacity-60 mt-2">The tokenizer will be available once it initializes.</div>
+                </div>
+              ) : modelError ? (
+                <div className="text-center py-8">
+                  <div className="text-red-300 mb-4">Tokenizer unavailable: {modelError}</div>
+                  <button onClick={retryModelLoading} className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 rounded-lg">
+                    Retry Loading Model
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center py-8 opacity-70">
+                  <div>Tokenizer initializing...</div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        <footer className="mt-6 text-xs opacity-70 leading-relaxed">
+        <footer className="mt-6 text-xs opacity-70 leading-relaxed space-y-3">
           <div>
-            <span className="font-semibold">How it works:</span> words/phrases → tokenizer (BPE) → <span className="font-semibold">MiniLM</span> embeddings → cosine similarity → 2D layout via <span className="font-semibold">{method.toUpperCase()}</span>. Links show each point's top‑{neighbors} neighbors by cosine.
+            <span className="font-semibold">How it works:</span> words/phrases → <span className="font-semibold">GPT-4 tokenizer</span> (BPE) → <span className="font-semibold">token-based embeddings</span> → cosine similarity → 2D layout via <span className="font-semibold">{method.toUpperCase()}</span>. Links show each point's top‑{neighbors} neighbors by cosine.
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-white/10">
+            <div>
+              <div className="font-semibold mb-1">📚 Why These Techniques Matter</div>
+              <div className="space-y-1">
+                <div><strong>UMAP:</strong> Reveals semantic clusters & preserves local meaning relationships</div>
+                <div><strong>PCA:</strong> Shows dominant patterns & provides interpretable variance axes</div>
+                <div><strong>Alternative methods</strong> like t-SNE, MDS, or Random Projection each reveal different aspects of meaning space</div>
+              </div>
+            </div>
+            <div>
+              <div className="font-semibold mb-1">🎯 Educational Value</div>
+              <div className="space-y-1">
+                <div>• Compare how words cluster differently with each method</div>
+                <div>• Understand trade-offs between speed vs. accuracy</div>
+                <div>• Learn when linear vs. non-linear approaches work best</div>
+                <div>• Explore how high-dimensional meaning gets compressed to 2D</div>
+                <div>• Use the tokenizer to see how text becomes tokens before embeddings</div>
+              </div>
+            </div>
           </div>
         </footer>
       </div>

@@ -12,7 +12,8 @@
     "deploy": "./scripts/deploy.sh",
     "deploy:vercel": "vercel --prod",
     "deploy:netlify": "netlify deploy --prod --dir dist",
-    "deploy:surge": "surge dist/"
+    "deploy:surge": "surge dist/",
+    "deploy:cloudflare": "npm run build && CLOUDFLARE_ACCOUNT_ID=b2e91a1d9b4ffc835b64e01c5f9bd3bd wrangler pages deploy dist --project-name dl-vector-museum-of-words --commit-dirty=true"
   },
   "dependencies": {
     "@types/three": "^0.180.0",

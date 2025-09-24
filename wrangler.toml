@@ -1,0 +1,6 @@
+name = "dl-vector-museum-of-words"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "dist"
+
+# This is a simplified configuration for Cloudflare Pages
+# For advanced features, configure them in the Cloudflare dashboard
